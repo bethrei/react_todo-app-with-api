@@ -11,6 +11,7 @@ type Props = {
   onDelete: (todoId: number) => Promise<void>;
   tempTodo: Todo | null;
   onEdit: (todo: Todo) => Promise<void>;
+  focusHeaderInput: () => void;
 };
 
 export const TodoList: React.FC<Props> = React.memo(function TodoList({
@@ -19,6 +20,7 @@ export const TodoList: React.FC<Props> = React.memo(function TodoList({
   onDelete,
   tempTodo,
   onEdit,
+  focusHeaderInput,
 }) {
   const [loadingTodosId, setLoadingTodosId] = useState<number[]>([]);
   const [editedTodo, setEditedTodo] = useState<Todo | null>(null);
@@ -29,11 +31,12 @@ export const TodoList: React.FC<Props> = React.memo(function TodoList({
 
   function handleDelete(todoId: number) {
     setLoadingTodosId(prevList => [...prevList, todoId]);
-    onDelete(todoId).finally(() =>
+    onDelete(todoId).finally(() => {
       setLoadingTodosId(prevList =>
         prevList.filter(currentId => currentId !== todoId),
-      ),
-    );
+      );
+      focusHeaderInput();
+    });
   }
 
   function handleToggleComplete(todo: Todo) {

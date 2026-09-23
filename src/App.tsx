@@ -131,10 +131,14 @@ export const App: React.FC = () => {
         .catch(error => {
           setError('Unable to delete a todo');
           throw error;
-        })
-        .finally(() => headerRef.current?.focusInput());
+        });
     },
     [setError],
+  );
+
+  const focusHeaderInput = useCallback(
+    () => headerRef.current?.focusInput(),
+    [],
   );
 
   const updateTodo = useCallback(
@@ -197,8 +201,8 @@ export const App: React.FC = () => {
   const deleteCompleted = useCallback(() => {
     return Promise.all(
       allTodos.filter(todo => todo.completed).map(todo => deleteTodo(todo.id)),
-    );
-  }, [allTodos, deleteTodo]);
+    ).finally(() => focusHeaderInput());
+  }, [allTodos, deleteTodo, focusHeaderInput]);
 
   if (!USER_ID) {
     return <UserWarning />;
@@ -225,6 +229,7 @@ export const App: React.FC = () => {
             onDelete={deleteTodo}
             tempTodo={tempTodo}
             onEdit={updateTodo}
+            focusHeaderInput={focusHeaderInput}
           />
         )}
 
