@@ -12,6 +12,7 @@ type Props = {
   tempTodo: Todo | null;
   onEdit: (todo: Todo) => Promise<void>;
   focusHeaderInput: () => void;
+  loadingTodosId: number[];
 };
 
 export const TodoList: React.FC<Props> = React.memo(function TodoList({
@@ -21,8 +22,8 @@ export const TodoList: React.FC<Props> = React.memo(function TodoList({
   tempTodo,
   onEdit,
   focusHeaderInput,
+  loadingTodosId,
 }) {
-  const [loadingTodosId, setLoadingTodosId] = useState<number[]>([]);
   const [editedTodo, setEditedTodo] = useState<Todo | null>(null);
   const [editedTodoValue, setEditedTodoValue] = useState('');
 
@@ -30,22 +31,7 @@ export const TodoList: React.FC<Props> = React.memo(function TodoList({
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleDelete(todoId: number) {
-    setLoadingTodosId(prevList => [...prevList, todoId]);
-    onDelete(todoId).finally(() => {
-      setLoadingTodosId(prevList =>
-        prevList.filter(currentId => currentId !== todoId),
-      );
-      focusHeaderInput();
-    });
-  }
-
-  function handleToggleComplete(todo: Todo) {
-    setLoadingTodosId(prevList => [...prevList, todo.id]);
-    toggleComplete(todo).finally(() =>
-      setLoadingTodosId(prevList =>
-        prevList.filter(todoId => todoId !== todo.id),
-      ),
-    );
+    onDelete(todoId).finally(() => focusHeaderInput());
   }
 
   function handleEditSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -55,8 +41,6 @@ export const TodoList: React.FC<Props> = React.memo(function TodoList({
       return;
     }
 
-    setLoadingTodosId(prevList => [...prevList, editedTodo.id]);
-
     onEdit({
       ...editedTodo,
       title: editedTodoValue,
@@ -64,12 +48,7 @@ export const TodoList: React.FC<Props> = React.memo(function TodoList({
       .then(() => {
         setEditedTodo(null);
       })
-      .catch(() => inputRef.current?.focus())
-      .finally(() =>
-        setLoadingTodosId(prevList =>
-          prevList.filter(todoId => todoId !== editedTodo.id),
-        ),
-      );
+      .catch(() => inputRef.current?.focus());
   }
 
   function cancelEditing(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -93,7 +72,7 @@ export const TodoList: React.FC<Props> = React.memo(function TodoList({
               type="checkbox"
               className="todo__status"
               checked={todo.completed}
-              onChange={() => handleToggleComplete(todo)}
+              onChange={() => toggleComplete(todo)}
             />
           </label>
 

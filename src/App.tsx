@@ -31,6 +31,9 @@ export const App: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [isInitLoaderVisible, setIsInitLoaderVisible] = useState(false);
   const [tempTodo, setTempTodo] = useState<null | Todo>(null);
+  const [loadingTodosId, setLoadingTodosId] = useState<number[]>([]);
+
+  const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let isLoaderShown = false;
@@ -80,7 +83,15 @@ export const App: React.FC = () => {
 
   const setError = useCallback((error: string) => {
     setErrorMessage(error);
-    setTimeout(() => setErrorMessage(''), 3000);
+
+    if (errorTimeoutRef.current) {
+      clearTimeout(errorTimeoutRef.current);
+    }
+
+    errorTimeoutRef.current = setTimeout(() => {
+      setErrorMessage('');
+      errorTimeoutRef.current = null;
+    }, 3000);
   }, []);
 
   const addNewTodo = useCallback(
@@ -123,6 +134,9 @@ export const App: React.FC = () => {
   const deleteTodo = useCallback(
     (todoId: number) => {
       setError('');
+      setLoadingTodosId(prevList =>
+        prevList.includes(todoId) ? prevList : [...prevList, todoId],
+      );
 
       return deleteTodoApi(todoId)
         .then(() => {
@@ -131,7 +145,12 @@ export const App: React.FC = () => {
         .catch(error => {
           setError('Unable to delete a todo');
           throw error;
-        });
+        })
+        .finally(() =>
+          setLoadingTodosId(prevList =>
+            prevList.filter(currentId => currentId !== todoId),
+          ),
+        );
     },
     [setError],
   );
@@ -149,6 +168,12 @@ export const App: React.FC = () => {
         return deleteTodo(updatedTodo.id);
       }
 
+      setLoadingTodosId(prevList =>
+        prevList.includes(updatedTodo.id)
+          ? prevList
+          : [...prevList, updatedTodo.id],
+      );
+
       const originalTodo = allTodos.find(todo => todo.id === updatedTodo.id);
 
       if (
@@ -156,7 +181,11 @@ export const App: React.FC = () => {
         originalTodo.title === updatedTitleTrimmed &&
         originalTodo.completed === updatedTodo.completed
       ) {
-        return Promise.resolve();
+        return Promise.resolve().finally(() =>
+          setLoadingTodosId(prevList =>
+            prevList.filter(currentId => currentId !== updatedTodo.id),
+          ),
+        );
       }
 
       const updatedTodoTrimmed: Todo = {
@@ -175,7 +204,12 @@ export const App: React.FC = () => {
         .catch(error => {
           setError('Unable to update a todo');
           throw error;
-        });
+        })
+        .finally(() =>
+          setLoadingTodosId(prevList =>
+            prevList.filter(currentId => currentId !== updatedTodo.id),
+          ),
+        );
     },
     [allTodos, deleteTodo, setError],
   );
@@ -199,6 +233,14 @@ export const App: React.FC = () => {
   );
 
   const deleteCompleted = useCallback(() => {
+    setLoadingTodosId(prevList => {
+      const completedTodosId = allTodos
+        .filter(todo => todo.completed && !prevList.includes(todo.id))
+        .map(todo => todo.id);
+
+      return completedTodosId;
+    });
+
     return Promise.all(
       allTodos.filter(todo => todo.completed).map(todo => deleteTodo(todo.id)),
     ).finally(() => focusHeaderInput());
@@ -230,6 +272,7 @@ export const App: React.FC = () => {
             tempTodo={tempTodo}
             onEdit={updateTodo}
             focusHeaderInput={focusHeaderInput}
+            loadingTodosId={loadingTodosId}
           />
         )}
 
